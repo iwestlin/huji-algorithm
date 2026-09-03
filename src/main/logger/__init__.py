@@ -16,10 +16,31 @@ def configure(level: str = "INFO"):
     if _logger is None:
         _logger = logger
     _logger.remove()
-    _logger.add(ROOT_PATH + "/output/logs/debug.log", level="DEBUG")
-    _logger.add(ROOT_PATH + "/output/logs/info.log", level="INFO")
-    _logger.add(ROOT_PATH + "/output/logs/warn.log", level="WARNING")
-    _logger.add(ROOT_PATH + "/output/logs/error.log", level="ERROR")
+    # rotation/retention 防止日志无限增长
+    _logger.add(
+        ROOT_PATH + "/output/logs/debug.log",
+        level="DEBUG",
+        rotation="50 MB",
+        retention="30 days",
+    )
+    _logger.add(
+        ROOT_PATH + "/output/logs/info.log",
+        level="INFO",
+        rotation="50 MB",
+        retention="30 days",
+    )
+    _logger.add(
+        ROOT_PATH + "/output/logs/warn.log",
+        level="WARNING",
+        rotation="50 MB",
+        retention="30 days",
+    )
+    _logger.add(
+        ROOT_PATH + "/output/logs/error.log",
+        level="ERROR",
+        rotation="50 MB",
+        retention="30 days",
+    )
     _logger.add(sys.stdout, level=level)
 
 
