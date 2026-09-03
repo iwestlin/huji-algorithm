@@ -8,6 +8,7 @@ from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 
 from src.main.config.config import DataSourceConfig, KafkaConfig, ServiceConfig
+from src.main.core.auto_clipper import CleanableFileCollection
 from src.main.core.badminton_auto_clipper import BadmintonAutoClipper
 from src.main.core.pingpong_auto_clipper import PingPongAutoClipper
 from src.main.filesystem.base_filesystem import FileSystem
@@ -119,10 +120,12 @@ class VideoEditService:
 
     def clip_video(self, filesystem: FileSystem, input_path: str) -> Response:
         output_info = ""
+        cleanable_file_collection = CleanableFileCollection()
         try:
             output_info = self.pingpong_auto_clipper.autoclip_video(
                 input_path,
                 auto_clip_config={},
+                cleanable_file_collection=cleanable_file_collection,
             ).all_match_merged_video_path
 
             remote_file = path_utils.path_join(
@@ -151,6 +154,7 @@ class VideoEditService:
                 os.remove(input_path)
             if os.path.exists(output_info):
                 os.remove(output_info)
+            cleanable_file_collection.clean()
 
     def start(self) -> None:
         LOG.info("视频剪辑服务启动")

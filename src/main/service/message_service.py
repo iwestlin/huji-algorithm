@@ -355,7 +355,9 @@ class MessageService:
             raise e
         finally:
             self.consumer.commit()
-            # cleanable_file_collection.clean()
+            # 清理任务过程中的临时文件（resized/clipped 中间产物等），
+            # 目录级清理由 OutputCleaner 按 cleanup 配置执行
+            cleanable_file_collection.clean()
 
     def _upload_and_create_result(
         self,

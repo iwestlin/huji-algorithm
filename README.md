@@ -84,6 +84,30 @@ Windows 上需安装 [Docker Desktop](https://www.docker.com/products/docker-des
 
 也可用环境变量覆盖（点号改为下划线），见 `.env.example`。支持 Jasypt：`ENC(密文)` + `JASYPT_PASSWORD`。
 
+### 输出目录与自动清理
+
+剪辑过程中的文件默认写在 `output/` 下：
+
+| 目录 | 内容 |
+|------|------|
+| `output/clipped/clipped/` | 最终合并视频（结果产物） |
+| `output/clipped/resized/` | 预测用的缩小视频（中间产物） |
+| `output/cache/` | 推理结果缓存（按视频文件名） |
+| `output/clip_snippet/` | 调试帧输出（`debug_clip_frame_output_dir` 开启时） |
+| `output/logs/` | 运行日志（50 MB 轮转，保留 30 天） |
+
+剪辑结束后会按 `autoclip_service_config.common.cleanup` 配置自动清理：
+
+| 配置项 | 默认 | 说明 |
+|--------|------|------|
+| `enabled` | `False` | 清理总开关 |
+| `clean_resized` | `True` | 清理预测用缩小视频（中间产物） |
+| `clean_clipped` | `False` | 清理最终合并视频目录（服务模式上传完成后即删，一般无需开启） |
+| `clean_snippet` | `False` | 清理调试帧输出目录 |
+| `cache_retention_days` | `7` | 推理缓存保留天数，`0` 表示永不过期 |
+
+缓存按视频文件名命中，同名视频复用上次推理结果；修改模型或参数后如需强制重算，可删除对应缓存文件或调低保留天数。
+
 ## 如何开发
 
 ### 安装依赖

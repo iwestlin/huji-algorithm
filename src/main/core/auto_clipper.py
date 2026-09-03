@@ -36,6 +36,7 @@ from src.main.pojo.video_clip_vo import VideoSegmentInfo
 from src.main.service.large_model_service import LargeModelService, ModelPredictor
 from src.main.service.progress_handler import ProgressHandler
 from src.main.utils import path_utils, video_utils
+from src.main.utils.cleanup_utils import OutputCleaner
 from src.main.utils.common_util import timer
 from src.main.utils.video_utils import (
     clip_video_by_times,
@@ -77,6 +78,7 @@ class AutoClipper[C](abc.ABC):
         self.resized_output_dir = Path(common_auto_clip_options.output_dir) / "resized"
         self.clipped_output_dir.mkdir(parents=True, exist_ok=True)
         self.resized_output_dir.mkdir(parents=True, exist_ok=True)
+        self.output_cleaner = OutputCleaner(common_auto_clip_options)
 
     @abc.abstractmethod
     def _clip_video(
@@ -579,10 +581,13 @@ class AutoClipper[C](abc.ABC):
         LOG.info(f"视频信息: {input_video_info}")
         LOG.info(f"视频剪辑配置: {clip_config}")
 
-        with timer("处理视频"):
-            video_clip_output_info: VideoClipOutputInfo = self.handle_video(
-                input_video_info, clip_config, cleanable_file_collection, progress_handler
-            )
+        try:
+            with timer("处理视频"):
+                video_clip_output_info: VideoClipOutputInfo = self.handle_video(
+                    input_video_info, clip_config, cleanable_file_collection, progress_handler
+                )
+        finally:
+            self.output_cleaner.clean_after_clip()
 
         LOG.info(f"视频剪辑完成: {video_clip_output_info}")
         return video_clip_output_info

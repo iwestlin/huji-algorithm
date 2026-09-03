@@ -84,6 +84,30 @@ For remote COS or backend API integration, update placeholders:
 
 Environment variables can override config (dots → underscores); see `.env.example`. Jasypt supported: `ENC(ciphertext)` + `JASYPT_PASSWORD`.
 
+### Output directories & auto cleanup
+
+Files produced during clipping default to `output/`:
+
+| Directory | Content |
+| --------- | ------- |
+| `output/clipped/clipped/` | Final merged videos (result artifacts) |
+| `output/clipped/resized/` | Downscaled videos for prediction (intermediate) |
+| `output/cache/` | Inference result cache (per video file name) |
+| `output/clip_snippet/` | Debug frame output (when `debug_clip_frame_output_dir` is set) |
+| `output/logs/` | Logs (50 MB rotation, 30-day retention) |
+
+After each clip finishes, directories are cleaned automatically per `autoclip_service_config.common.cleanup`:
+
+| Config key | Default | Description |
+| ---------- | ------- | ----------- |
+| `enabled` | `False` | Master switch for cleanup |
+| `clean_resized` | `True` | Remove downscaled prediction videos (intermediate) |
+| `clean_clipped` | `False` | Remove final merged video directory (service mode deletes after upload; rarely needed) |
+| `clean_snippet` | `False` | Remove debug frame output directory |
+| `cache_retention_days` | `7` | Inference cache retention in days; `0` disables expiry |
+
+The cache is keyed by video file name, so the same video reuses its previous inference results. To force recomputation after changing models or parameters, delete the matching cache file or lower the retention.
+
 ## Development
 
 ### Install dependencies

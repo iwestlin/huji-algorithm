@@ -178,6 +178,24 @@ class FileSystemsConfig(SecurityConfig):
         self.cos_config = S3Config(self._get_sub_config_context("cos"))
 
 
+class AutoClipCleanupConfig(SecurityConfig):
+    """剪辑完成后的输出清理配置。
+
+    目录值支持 `$PROJECT_ROOT` / `$PROJECT_RESOURCES` 前缀，留空表示不清理该项。
+    """
+
+    def __init__(self, config_context: ConfigContext):
+        super().__init__(config_context)
+        self.enabled: bool = bool(self._get_value("enabled", False))
+
+        self.clean_resized: bool = bool(self._get_value("clean_resized", True))
+        self.clean_clipped: bool = bool(self._get_value("clean_clipped", False))
+        # 清理 debug_clip_frame_output_dir（调试帧图片/片段输出目录）
+        self.clean_snippet: bool = bool(self._get_value("clean_snippet", False))
+
+        self.cache_retention_days: int = int(self._get_value("cache_retention_days", 7))
+
+
 class CommonAutoClipOptions(SecurityConfig):
     def __init__(self, config_context: ConfigContext):
         super().__init__(config_context)
@@ -199,6 +217,9 @@ class CommonAutoClipOptions(SecurityConfig):
             self.debug_clip_frame_output_dir = path_utils.get_project_path(
                 self.debug_clip_frame_output_dir
             )
+        self.cleanup: AutoClipCleanupConfig = AutoClipCleanupConfig(
+            self._get_sub_config_context("cleanup")
+        )
 
 
 class PingPongAutoClipOptions(SecurityConfig):
