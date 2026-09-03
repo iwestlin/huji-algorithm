@@ -75,15 +75,52 @@ def _build_parser() -> argparse.ArgumentParser:
         help="羽毛球比赛类型，默认 singles",
     )
     parser.add_argument("--output-dir", "-o", metavar="DIR", help="剪辑输出目录")
+    parser.add_argument(
+        "--no-cleanup",
+        action="store_true",
+        help="剪辑完成后不清理临时输出（覆盖 cleanup 配置）",
+    )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="剪辑完成后清理临时输出（覆盖 cleanup 配置）",
+    )
+    parser.add_argument(
+        "--set",
+        action="append",
+        metavar="KEY=VALUE",
+        default=[],
+        help="覆盖任意配置项，等价于同名环境变量，可重复；"
+        "KEY 为配置文件中的点号路径，如 "
+        "--set autoclip_service_config.common.cleanup.cache_retention_days=30",
+    )
     parser.add_argument("--serve", action="store_true", help="启动 Kafka + HTTP 服务")
     parser.add_argument("--train", action="store_true", help="训练模型")
     return parser
+
+
+def _apply_set_overrides(args: argparse.Namespace) -> None:
+    """将 --set KEY=VALUE 注入环境变量，复用配置层已有的 env 覆盖机制。
+
+    必须在 load_config 之前执行；配置键解析顺序为 环境变量 > yml > 默认值。
+    """
+    for item in args.set:
+        key, sep, value = item.partition("=")
+        if not sep or not key.strip() or not value:
+            LOG.error(f"--set 参数格式错误: {item}，应为 KEY=VALUE")
+            sys.exit(1)
+        env_key = key.strip().replace(".", "_")
+        os.environ[env_key] = value
+        LOG.info(f"配置覆盖: {key.strip()} = {value}")
 
 
 def _resolve_mode(args: argparse.Namespace) -> str:
     modes = [bool(args.video_path), args.serve, args.train]
     if sum(modes) > 1:
         LOG.error("不能同时指定 --video-path、--serve、--train")
+        sys.exit(1)
+    if args.cleanup and args.no_cleanup:
+        LOG.error("不能同时指定 --cleanup 与 --no-cleanup")
         sys.exit(1)
     if args.video_path:
         return "clip"
@@ -116,6 +153,10 @@ def run_clip(args: argparse.Namespace, config: Config) -> None:
     common_options = auto_clip_config.common_options
     if args.output_dir:
         common_options.output_dir = path_utils.get_project_path(args.output_dir)
+    if args.cleanup:
+        common_options.cleanup.enabled = True
+    elif args.no_cleanup:
+        common_options.cleanup.enabled = False
 
     large_model_service = LargeModelService(config.large_model_service_config)
     if args.sport == "ping_pong":
@@ -185,6 +226,7 @@ def run_from_config(config: Config) -> None:
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
+    _apply_set_overrides(args)
     config = load_config(args.config)
     mode = _resolve_mode(args)
 

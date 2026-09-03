@@ -48,15 +48,6 @@ python -m venv .venv
 .venv\Scripts\python main.py --video-path videos\demo.mp4 --sport ping_pong
 ```
 
-### Service mode (Kafka + HTTP)
-
-```bash
-cd docker/dev && docker compose up -d
-python main.py --serve
-```
-
-On Windows, install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-
 ### CLI flags
 
 | Flag | Description |
@@ -65,11 +56,14 @@ On Windows, install [Docker Desktop](https://www.docker.com/products/docker-desk
 | `--sport` | `ping_pong` or `badminton` (required for clip mode) |
 | `--match-type` | Badminton: `singles` (default) / `doubles` |
 | `--output-dir` / `-o` | Clip output dir (overrides `output_dir` in config) |
+| `--cleanup` | Clean temp output after clipping (overrides cleanup `enabled`) |
+| `--no-cleanup` | Keep temp output after clipping (overrides cleanup `enabled`) |
 | `--config` | Config directory, default `src/resources` |
-| `--serve` | Start Kafka + HTTP service |
 | `--train` | Train models |
 
 When clipping finishes, the merged video path is printed to the terminal; default output is `output/clipped/` (override with `-o`).
+
+Beyond the table above, every config-file key can be overridden on the command line (`--set dotted.path=value`, repeatable). For the full list of keys see `src/main/config/config.py` and `src/resources/application*.yml`.
 
 Sample videos: `src/resources/video/examples/`.
 
@@ -102,7 +96,7 @@ After each clip finishes, directories are cleaned automatically per `autoclip_se
 | ---------- | ------- | ----------- |
 | `enabled` | `False` | Master switch for cleanup |
 | `clean_resized` | `True` | Remove downscaled prediction videos (intermediate) |
-| `clean_clipped` | `False` | Remove final merged video directory (service mode deletes after upload; rarely needed) |
+| `clean_clipped` | `False` | Remove final merged video directory (rarely needed) |
 | `clean_snippet` | `False` | Remove debug frame output directory |
 | `cache_retention_days` | `7` | Inference cache retention in days; `0` disables expiry |
 

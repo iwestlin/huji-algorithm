@@ -48,15 +48,6 @@ python -m venv .venv
 .venv\Scripts\python main.py --video-path videos\demo.mp4 --sport ping_pong
 ```
 
-### 服务模式（Kafka + HTTP）
-
-```bash
-cd docker/dev && docker compose up -d
-python main.py --serve
-```
-
-Windows 上需安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)。
-
 ### CLI 参数
 
 | 参数 | 说明 |
@@ -65,11 +56,14 @@ Windows 上需安装 [Docker Desktop](https://www.docker.com/products/docker-des
 | `--sport` | 运动类型：`ping_pong` 或 `badminton`（clip 模式必填） |
 | `--match-type` | 羽毛球比赛类型：`singles`（默认）/ `doubles` |
 | `--output-dir` / `-o` | 剪辑输出目录（覆盖配置文件中的 `output_dir`） |
+| `--cleanup` | 剪辑完成后清理临时输出（覆盖 cleanup 配置的 `enabled`） |
+| `--no-cleanup` | 剪辑完成后不清理临时输出（覆盖 cleanup 配置的 `enabled`） |
 | `--config` | 配置目录，默认 `src/resources` |
-| `--serve` | 启动 Kafka（需要配置 Kafka 服务） + HTTP 服务 |
 | `--train` | 训练模型 |
 
 剪辑完成后，终端会打印合并视频的输出路径；默认写入配置中的 `output/clipped/`（可用 `-o` 覆盖）。
+
+除上表外，所有配置文件参数均可通过命令行覆盖（`--set 点号路径=值`，可重复），完整参数说明见 `src/main/config/config.py` 与 `src/resources/application*.yml`。
 
 示例视频：`src/resources/video/examples/`。
 
@@ -102,7 +96,7 @@ Windows 上需安装 [Docker Desktop](https://www.docker.com/products/docker-des
 |--------|------|------|
 | `enabled` | `False` | 清理总开关 |
 | `clean_resized` | `True` | 清理预测用缩小视频（中间产物） |
-| `clean_clipped` | `False` | 清理最终合并视频目录（服务模式上传完成后即删，一般无需开启） |
+| `clean_clipped` | `False` | 清理最终合并视频目录（一般无需开启） |
 | `clean_snippet` | `False` | 清理调试帧输出目录 |
 | `cache_retention_days` | `7` | 推理缓存保留天数，`0` 表示永不过期 |
 
