@@ -123,5 +123,5 @@ python -m unittest discover -s src/test -p "test_*.py"
 
 ## 社区
 
-- **QQ 群**：[点击链接加入群聊【弧迹App】](https://qm.qq.com/q/U5U0zLyyA2)
+- **QQ 群**：[112856301](https://qm.qq.com/q/U5U0zLyyA2)（点击加入）
 - **Discord**：[加入群组](https://discord.com/channels/1518551459053178960/1518551461242474558)
