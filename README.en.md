@@ -123,5 +123,5 @@ python -m unittest discover -s src/test -p "test_*.py"
 
 ## Community
 
-- **QQ Group**: 112856301
+- **QQ Group**: [Join the group chat (弧迹App)](https://qm.qq.com/q/U5U0zLyyA2)
 - **Discord**: [Join our server](https://discord.com/channels/1518551459053178960/1518551461242474558)
