@@ -53,7 +53,6 @@ def _build_parser() -> argparse.ArgumentParser:
   python main.py --video-path videos/demo.mp4 --sport ping_pong
   python main.py --video-path videos/demo.mp4 --sport badminton --match-type doubles
   python main.py --serve
-  python main.py --train
   python main.py
         """,
     )
@@ -95,7 +94,6 @@ def _build_parser() -> argparse.ArgumentParser:
         "--set autoclip_service_config.common.cleanup.cache_retention_days=30",
     )
     parser.add_argument("--serve", action="store_true", help="启动 Kafka + HTTP 服务")
-    parser.add_argument("--train", action="store_true", help="训练模型")
     return parser
 
 
@@ -115,9 +113,9 @@ def _apply_set_overrides(args: argparse.Namespace) -> None:
 
 
 def _resolve_mode(args: argparse.Namespace) -> str:
-    modes = [bool(args.video_path), args.serve, args.train]
+    modes = [bool(args.video_path), args.serve]
     if sum(modes) > 1:
-        LOG.error("不能同时指定 --video-path、--serve、--train")
+        LOG.error("不能同时指定 --video-path、--serve")
         sys.exit(1)
     if args.cleanup and args.no_cleanup:
         LOG.error("不能同时指定 --cleanup 与 --no-cleanup")
@@ -126,8 +124,6 @@ def _resolve_mode(args: argparse.Namespace) -> str:
         return "clip"
     if args.serve:
         return "serve"
-    if args.train:
-        return "train"
     return "config"
 
 
@@ -208,15 +204,8 @@ def run_serve(config: Config) -> None:
         LOG.error(f"启动服务失败: {e}")
 
 
-def run_train(config: Config) -> None:
-    large_model_service = LargeModelService(config.large_model_service_config)
-    large_model_service.train()
-
-
 def run_from_config(config: Config) -> None:
-    if config.job_type == JobType.TRAIN_MODEL:
-        run_train(config)
-    elif config.job_type == JobType.SERVICE:
+    if config.job_type == JobType.SERVICE:
         run_serve(config)
     else:
         LOG.error(f"未知的 job_type: {config.job_type}")
@@ -234,8 +223,6 @@ def main() -> None:
         run_clip(args, config)
     elif mode == "serve":
         run_serve(config)
-    elif mode == "train":
-        run_train(config)
     else:
         run_from_config(config)
 

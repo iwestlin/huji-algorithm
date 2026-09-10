@@ -283,18 +283,6 @@ class ModelConfig(SecurityConfig):
         self.predict_model_path: str = path_utils.get_project_path(
             self._get_value("predict_model_path")
         )
-        self.train_model_path: str = path_utils.get_project_path(
-            self._get_value("train_model_path")
-        )
-        self.train_dataset_path: str = path_utils.get_project_path(
-            self._get_value("train_dataset_path")
-        )
-        self.train_output_path: str = path_utils.get_project_path(
-            self._get_value("train_output_path")
-        )
-        self.total_dataset_path: str = path_utils.get_project_path(
-            self._get_value("total_dataset_path")
-        )
 
 
 class LargeModelServiceConfig(SecurityConfig):
@@ -304,7 +292,6 @@ class LargeModelServiceConfig(SecurityConfig):
         models: dict[str, object] = self._get_value("models")
         for model in models:
             self.models[model] = ModelConfig(ConfigContext(config=models[model]))
-        self.train_model_name: str = self._get_value("train_model_name")
         self.debug = self._get_value("debug", False)
 
 

@@ -12,26 +12,13 @@ filesystem:
     endpoint: "cos.ap-guangzhou.myqcloud.com"
 
 large_model:
-  train_model_name: ping_pong_singles_profession
   models:
     ping_pong_singles_profession:
-      train_output_path: output/models/classify/ping_pong/profession/result
-      total_dataset_path: "$PROJECT_ROOT/materials/ping_pong/singles/profession/dataset"
-      train_dataset_path: "$PROJECT_ROOT/materials/ping_pong/singles/profession/train_dataset"
-      train_model_path: "$PROJECT_RESOURCES/models/ping_pong/profession/last.pt"
-      predict_model_path: "$PROJECT_RESOURCES/models/ping_pong/profession/best.pt"
+      predict_model_path: "$PROJECT_RESOURCES/ncnn_models/ping_pong/profession/model.ncnn.param"
     badminton_doubles:
-      train_output_path: output/models/classify/badminton/doubles/result
-      total_dataset_path: "$PROJECT_ROOT/materials/badminton/doubles/dataset"
-      train_dataset_path: "$PROJECT_ROOT/materials/badminton/doubles/train_dataset"
-      train_model_path: "$PROJECT_RESOURCES/models/badminton/doubles/last.pt"
-      predict_model_path: "$PROJECT_RESOURCES/models/badminton/doubles/best.pt"
+      predict_model_path: "$PROJECT_RESOURCES/ncnn_models/badminton/doubles/model.ncnn.param"
     badminton_singles:
-      train_output_path: output/models/classify/badminton/singles/result
-      total_dataset_path: "$PROJECT_ROOT/materials/badminton/singles/dataset"
-      train_dataset_path: "$PROJECT_ROOT/materials/badminton/singles/train_dataset"
-      train_model_path: "$PROJECT_RESOURCES/models/badminton/singles/last.pt"
-      predict_model_path: "$PROJECT_RESOURCES/models/badminton/singles/best.pt"
+      predict_model_path: "$PROJECT_RESOURCES/ncnn_models/badminton/singles/model.ncnn.param"
 
 autoclip_service_config:
   ping_pong:

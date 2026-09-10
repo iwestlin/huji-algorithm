@@ -59,7 +59,6 @@ python -m venv .venv
 | `--cleanup` | 剪辑完成后清理临时输出（覆盖 cleanup 配置的 `enabled`） |
 | `--no-cleanup` | 剪辑完成后不清理临时输出（覆盖 cleanup 配置的 `enabled`） |
 | `--config` | 配置目录，默认 `src/resources` |
-| `--train` | 训练模型 |
 
 剪辑完成后，终端会打印合并视频的输出路径；默认写入配置中的 `output/clipped/`（可用 `-o` 覆盖）。
 

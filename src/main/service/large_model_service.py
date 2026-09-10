@@ -1,5 +1,4 @@
 # ncnn python binding 无类型桩,strict 下豁免对 ncnn 的访问检查
-# (与 auto_clipper.py 中 ray 的逐行 ignore 同目的)
 # pyright: reportMissingTypeStubs=false, reportUnknownVariableType=false
 # pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
 # pyright: reportAttributeAccessIssue=false

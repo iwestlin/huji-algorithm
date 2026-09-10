@@ -34,11 +34,3 @@ class TestAutoClipper(TestCaseBase):
             input_video_path=get_resource("video/examples/badminton_doubles_1.mp4"),
             auto_clip_config=json.loads(config.model_dump_json()),
         )
-
-    # def test_predict(self):
-    #     model = YOLO(model_path)
-    #     results =model(frames, stream=True, stream_buffer=True)
-    #     # res = model.predict(frames, stream=True)  # type: ignore
-    #     for result in results:
-    #         top1: str = result.names[r.probs.top1]  # type: ignore
-    #         ret.append(top1)

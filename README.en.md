@@ -59,7 +59,6 @@ python -m venv .venv
 | `--cleanup` | Clean temp output after clipping (overrides cleanup `enabled`) |
 | `--no-cleanup` | Keep temp output after clipping (overrides cleanup `enabled`) |
 | `--config` | Config directory, default `src/resources` |
-| `--train` | Train models |
 
 When clipping finishes, the merged video path is printed to the terminal; default output is `output/clipped/` (override with `-o`).
 

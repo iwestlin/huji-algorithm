@@ -6,13 +6,11 @@ from tempfile import TemporaryDirectory
 from typing import Any
 
 import cv2
-from ray import remote
 from tqdm import tqdm
 
 from src.main.constant.autoclip_constant import (
     ActionType,
     PredictedFrameInfo,
-    VideoInfo,
 )
 from src.main.pojo.video_clip_vo import VideoSegmentInfo
 from src.main.service.large_model_service import NcnnModelPredictor as ModelPredictor
@@ -166,26 +164,3 @@ def extract_frames(
 
     logging.info(f"视频片段 [{start_frame}, {end_frame}帧] 处理完成")
     return predict_infos
-
-
-@remote
-def extract_frames_worker_distributed(
-    video_data: bytes, model: bytes, class_mappings: dict[str, ActionType]
-):
-    with (
-        tempfile.NamedTemporaryFile(suffix=".pt", delete=False) as model_file,
-        tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as video_file,
-    ):
-        model_predictor = ModelPredictor(model_file.name, False)
-        model_file.write(model)  # pyright: ignore [reportUnknownArgumentType]
-        video_file.write(video_data)  # pyright: ignore [reportUnknownArgumentType]
-        video_info: VideoInfo = video_utils.get_video_info(video_file.name)
-        predict_infos: list[PredictedFrameInfo] = extract_frames_v2(
-            video_segment_info=VideoSegmentInfo(
-                video_path=video_file.name, start_time=0, end_time=video_info.duration
-            ),
-            per_second_frames=5,
-            model_predictor=model_predictor,
-            class_mappings=class_mappings,
-        )
-        return predict_infos

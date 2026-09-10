@@ -10,13 +10,11 @@ from concurrent.futures import Future, ProcessPoolExecutor
 from multiprocessing import Value
 from pathlib import Path
 from threading import Thread
-from typing import Any, cast
+from typing import Any
 
 import cv2
-import ray
 from tqdm import tqdm
 
-import src
 from src.main.config.config import CommonAutoClipOptions
 from src.main.constant.autoclip_constant import (
     ActionType,
@@ -129,70 +127,6 @@ class AutoClipper[C](abc.ABC):
             action_segment_detector.convert_action_point_to_game_segments(prediction_actions_points)
         )
         return segments
-
-    def predict_video_action_points_internal_distributed(
-        self,
-        video_path: str,
-        model_name: str,
-        segment_duration: float,
-        class_mappings: dict[str, ActionType],
-    ) -> list[PredictedFrameInfo]:
-        ray.init(  # type: ignore
-            address="ray://localhost:10001",
-            runtime_env={"py_modules": [src], "excludes": ["resources"]},
-        )
-
-        video_info = video_utils.get_video_info(video_path)
-        # 读取整个视频文件到内存
-        duration = video_info.duration
-        current_time = 0
-        video_segment_data_refs: list[Any] = []
-
-        while current_time < duration:
-            next_time = min(current_time + segment_duration, duration)
-            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_file:
-                video_utils.clip_video_by_times(
-                    video_path,
-                    current_time,
-                    next_time - current_time,
-                    output_file=str(temp_file.name),
-                )
-                video_segment_data_refs.append(ray.put(temp_file.read()))  # pyright: ignore [reportUnknownMemberType]
-                current_time += segment_duration
-
-        model_path = self.large_model_service.get_model_path(model_name)
-        model_ref = ray.put(Path(model_path).read_bytes())  # type: ignore
-
-        # 创建分布式任务
-        futures = []
-
-        for video_segment_data_ref in video_segment_data_refs:
-            future = frame_action_predictor.extract_frames_worker_distributed.options(  # type: ignore
-                num_cpus=1, memory=1000 * 1024 * 1024, num_gpus=1
-            ).remote(  # pyright: ignore [reportUnknownMemberType]
-                video_segment_data_ref,
-                model_ref,  # type: ignore
-                class_mappings,
-            )
-            futures.append(future)  # type: ignore
-
-        result: list[list[PredictedFrameInfo]] = cast(
-            list[list[PredictedFrameInfo]],
-            ray.get(futures),  # type: ignore
-        )
-
-        all_predict_infos: list[PredictedFrameInfo] = []
-
-        for segment_predictions in result:  # type: ignore
-            all_predict_infos.extend(segment_predictions)
-
-        all_predict_infos.sort(key=lambda x: x.seconds)
-
-        LOG.info(f"分布式处理完成，总共找到 {len(all_predict_infos)} 个动作点")
-
-        self._cache_predict_infos(all_predict_infos, video_path)
-
-        return all_predict_infos
 
     def predict_video_action_points_internal_v2(
         self,

@@ -1,7 +1,6 @@
 logger_level: DEBUG
 env: dev
 job_type: service
-#job_type: train_model
 
 datasource:
   mysql:
