@@ -6,10 +6,10 @@
 from pathlib import Path
 from typing import Any
 
-import cv2
 import ncnn
 import numpy as np
 import ruamel.yaml
+from PIL import Image
 
 from src.main.config.config import LargeModelServiceConfig, ModelConfig
 from src.main.constant.autoclip_constant import ActionType
@@ -17,27 +17,26 @@ from src.main.logger import LOG
 
 
 INPUT_SIZE = 640
-PAD_VALUE = 114
 
 
-def letterbox_image(img_path: str, size: int = INPUT_SIZE) -> np.ndarray[Any, np.dtype[np.float32]]:
-    """YOLO classify letterbox:短边缩放到 size,pad 114 居中,/255,CHW。
+def preprocess_image(
+    img_path: str, size: int = INPUT_SIZE
+) -> np.ndarray[Any, np.dtype[np.float32]]:
+    """复刻 ultralytics classify 预测预处理(模型 .pt 内嵌 transforms)。
 
-    与 huji-app 的 ImagePreprocessor 行为一致。
+    Resize(短边=size,长边 int 截断,PIL BILINEAR) → CenterCrop(size) → /255 → CHW。
+    与 torchvision Resize+CenterCrop+ToTensor 逐位一致(经逐帧 parity 验证)。
     """
-    img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-    if img is None:  # pyright: ignore[reportUnnecessaryComparison]
-        raise ValueError(f"Unable to read image: {img_path}")
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    h, w = img.shape[:2]
-    scale = min(size / w, size / h)
-    new_w, new_h = int(round(w * scale)), int(round(h * scale))
-    new_w, new_h = max(1, min(new_w, size)), max(1, min(new_h, size))
-    resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
-    canvas = np.full((size, size, 3), PAD_VALUE, dtype=np.uint8)
-    x_off, y_off = (size - new_w) // 2, (size - new_h) // 2
-    canvas[y_off : y_off + new_h, x_off : x_off + new_w] = resized
-    return (canvas.astype(np.float32) / 255.0).transpose(2, 0, 1)
+    img = Image.open(img_path).convert("RGB")
+    w, h = img.size
+    if w < h:
+        new_w, new_h = size, int(size * h / w)
+    else:
+        new_w, new_h = int(size * w / h), size
+    resized = img.resize((new_w, new_h), Image.BILINEAR)
+    x_off, y_off = (new_w - size) // 2, (new_h - size) // 2
+    cropped = resized.crop((x_off, y_off, x_off + size, y_off + size))
+    return (np.asarray(cropped, dtype=np.float32) / 255.0).transpose(2, 0, 1)
 
 
 class NcnnModelPredictor:
@@ -64,12 +63,16 @@ class NcnnModelPredictor:
         return self._net
 
     def predict(self, img_path: str, classes_mapping: dict[str, ActionType]) -> ActionType:
-        x = letterbox_image(img_path)
-        mat = ncnn.Mat(np.ascontiguousarray(x))
+        x = preprocess_image(img_path)
+        # ncnn.Mat 包装而非拷贝 numpy 缓冲区:input_arr 必须存活到 extract 结束,
+        # 否则临时数组被 GC 后读到已释放内存(表现为不确定的 NaN/错分类)
+        input_arr = np.ascontiguousarray(x)
+        mat = ncnn.Mat(input_arr)
         ex = self._get_net().create_extractor()
         ex.input("in0", mat)
         _, out = ex.extract("out0")
-        logits = np.array(out)[0]
+        # ncnn 输出 Mat 为 1-D(类别数);reshape(-1) 同时兼容 (C,) 与 (1, C)
+        logits = np.array(out).reshape(-1)
         top1 = self.names[int(np.argmax(logits))]
         if self.debug:
             LOG.info(f"ncnn predict {img_path}: top1={top1} logits={np.round(logits, 4).tolist()}")

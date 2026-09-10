@@ -10,7 +10,7 @@ from src.main.constant.autoclip_constant import (
     badminton_classes_mapping,
     ping_pong_classes_mapping,
 )
-from src.main.service.large_model_service import NcnnModelPredictor, letterbox_image
+from src.main.service.large_model_service import NcnnModelPredictor, preprocess_image
 from src.test.base.test_base import TestCaseBase
 
 
@@ -26,14 +26,20 @@ def _make_test_image() -> str:
     return str(f)
 
 
-class TestLetterbox(unittest.TestCase):
-    def test_letterbox_shape_and_pad(self):
-        arr = letterbox_image(_make_test_image(), size=640)
+class TestPreprocess(unittest.TestCase):
+    def test_preprocess_shape_and_center_crop(self):
+        # 640x480 → 短边 480 → scale=640/480 → 853x640 → CenterCrop(640) 居中取 640x640
+        arr = preprocess_image(_make_test_image(), size=640)
         self.assertEqual(arr.shape, (3, 640, 640))
         self.assertEqual(arr.dtype, np.float32)
-        # 640x480 → scale=1.0? 不:短边 480 → scale=640/480=1.333,newH=640,newW=853>640
-        # → scale 收敛为 640/640=1.0;宽图:上下 pad 应为 114/255
-        self.assertAlmostEqual(float(arr[:, : (640 - 480) // 2, :].mean()), 114 / 255, places=2)
+
+    def test_preprocess_square_passthrough(self):
+        # 正方形输入:Resize 后即 640x640,CenterCrop 无裁切
+        img = np.random.default_rng(1).integers(0, 256, size=(300, 300, 3), dtype=np.uint8)
+        f = Path(tempfile.gettempdir()) / "huji_ncnn_pred_test_sq.png"
+        cv2.imwrite(str(f), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        arr = preprocess_image(str(f), size=640)
+        self.assertEqual(arr.shape, (3, 640, 640))
 
 
 class TestNcnnPredictor(TestCaseBase):
