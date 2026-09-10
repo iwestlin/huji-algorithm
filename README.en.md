@@ -14,7 +14,7 @@ Auto-clip table tennis and badminton match videos: detect rally segments, filter
 
 - Python 3.12+
 - [FFmpeg](https://ffmpeg.org/) on `PATH` (used when merging clipped segments)
-- GPU optional; on Windows if PyTorch install fails, pick the right CUDA build from [pytorch.org](https://pytorch.org) and `pip install`
+- GPU optional (ncnn inference supports Vulkan GPU acceleration, with automatic CPU fallback)
 
 ## Quick start
 
@@ -119,6 +119,11 @@ Windows: `.\setup.ps1`
 ```bash
 python -m unittest discover -s src/test -p "test_*.py"
 ```
+
+## Model training
+
+Training and model export have moved to [huji-train](https://github.com/hhoao/huji-train).
+This repo is inference-only (ncnn); models live in `src/resources/ncnn_models/`.
 
 ## Community
 

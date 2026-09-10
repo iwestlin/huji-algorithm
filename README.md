@@ -14,7 +14,7 @@
 
 - Python 3.12+
 - [FFmpeg](https://ffmpeg.org/)（需在 PATH 中，剪辑合并视频时使用）
-- GPU 可选；Windows 上 PyTorch 若安装失败，请按 [pytorch.org](https://pytorch.org) 选择对应 CUDA 版本后 `pip install`
+- GPU 可选（ncnn 推理支持 Vulkan GPU 加速，无 GPU 时自动回退 CPU）
 
 ## 快速开始
 
@@ -119,6 +119,11 @@ Windows：`.\setup.ps1`
 ```bash
 python -m unittest discover -s src/test -p "test_*.py"
 ```
+
+## 模型训练
+
+训练与模型导出已分离到 [huji-train](https://github.com/hhoao/huji-train)。
+本仓库只做推理（ncnn），模型位于 `src/resources/ncnn_models/`。
 
 ## 社区
 
