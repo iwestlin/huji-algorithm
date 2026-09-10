@@ -9,11 +9,13 @@ unstable on Windows):
 Each run writes <combo>.npy logs to a temp dir; run both then call with
 "compare" to assert argmax equality and max|Δlogit| < 1e-4.
 """
+
 import sys
 import tempfile
 from pathlib import Path
 
 import numpy as np
+
 
 MODELS_ROOT = Path(__file__).resolve().parent.parent / "src" / "resources"
 ONNX_ROOT = MODELS_ROOT / "models"
@@ -42,6 +44,7 @@ def out_path(sport: str, match: str) -> Path:
 
 def run_ort(combo) -> np.ndarray:
     import onnxruntime as ort
+
     sport, match = combo
     sess = ort.InferenceSession(
         str(ONNX_ROOT / sport / match / "best.onnx"),
@@ -54,6 +57,7 @@ def run_ort(combo) -> np.ndarray:
 
 def run_ncnn(combo) -> np.ndarray:
     import ncnn
+
     sport, match = combo
     net = ncnn.Net()
     net.opt.use_vulkan_compute = False  # CPU mode for strict parity

@@ -33,7 +33,12 @@ from src.main.core.action_segment_detector import ActionSegmentDetector
 from src.main.core.frame_action_predictor import extract_frames, init_pool_processes
 from src.main.logger import LOG
 from src.main.pojo.video_clip_vo import VideoSegmentInfo
-from src.main.service.large_model_service import LargeModelService, ModelPredictor
+from src.main.service.large_model_service import (
+    LargeModelService,
+)
+from src.main.service.large_model_service import (
+    NcnnModelPredictor as ModelPredictor,
+)
 from src.main.service.progress_handler import ProgressHandler
 from src.main.utils import path_utils, video_utils
 from src.main.utils.cleanup_utils import OutputCleaner

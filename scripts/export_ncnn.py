@@ -10,12 +10,14 @@ ncnn format and normalizes the output layout to:
     <out>/<sport>/<match_type>/model.ncnn.bin
     <out>/<sport>/<match_type>/metadata.yaml
 """
+
 import argparse
 import shutil
 import sys
 from pathlib import Path
 
 from ultralytics import YOLO
+
 
 MODELS_ROOT = Path(__file__).resolve().parent.parent / "src" / "resources" / "models"
 MODEL_COMBOS = [

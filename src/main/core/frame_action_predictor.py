@@ -15,7 +15,7 @@ from src.main.constant.autoclip_constant import (
     VideoInfo,
 )
 from src.main.pojo.video_clip_vo import VideoSegmentInfo
-from src.main.service.large_model_service import ModelPredictor
+from src.main.service.large_model_service import NcnnModelPredictor as ModelPredictor
 from src.main.utils import video_utils
 
 
