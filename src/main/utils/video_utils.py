@@ -369,8 +369,15 @@ def interval_extract_frames(video_path: str, frame_interval: int, temp_dir: str)
         "-i",
         video_path,
         "-vf",
-        f"fps={frame_interval}",
+        # 短边缩放到 classify imgsz,长边按比例。随后 preprocess_image 只做 CenterCrop,
+        # 避免原分辨率 JPEG + PIL 二次放大。flags=bilinear 贴近 ultralytics Resize。
+        (
+            f"fps={frame_interval},"
+            "scale='if(lt(iw,ih),640,-1)':'if(lt(iw,ih),-1,640)':flags=bilinear"
+        ),
+        "-q:v",
+        "3",
         "-y",
-        str(Path(temp_dir, "%d.png")),
+        str(Path(temp_dir, "%d.jpg")),
     ]
     _run_cmd(cmd)

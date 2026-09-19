@@ -85,7 +85,7 @@ Files produced during clipping default to `output/`:
 | --------- | ------- |
 | `output/clipped/clipped/` | Final merged videos (result artifacts) |
 | `output/clipped/resized/` | Downscaled videos for prediction (intermediate) |
-| `output/cache/` | Inference result cache (per video file name) |
+| `output/cache/` | Inference result cache (per video absolute path) |
 | `output/clip_snippet/` | Debug frame output (when `debug_clip_frame_output_dir` is set) |
 | `output/logs/` | Logs (50 MB rotation, 30-day retention) |
 
@@ -99,7 +99,7 @@ After each clip finishes, directories are cleaned automatically per `autoclip_se
 | `clean_snippet` | `False` | Remove debug frame output directory |
 | `cache_retention_days` | `7` | Inference cache retention in days; `0` disables expiry |
 
-The cache is keyed by video file name, so the same video reuses its previous inference results. To force recomputation after changing models or parameters, delete the matching cache file or lower the retention.
+The cache is keyed by the video's absolute path, so two files with the same name in different directories do not share results. To force recomputation after changing models or parameters, delete the matching cache file or lower the retention.
 
 ## Development
 

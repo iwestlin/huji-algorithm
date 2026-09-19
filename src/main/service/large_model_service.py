@@ -56,6 +56,8 @@ class NcnnModelPredictor:
         if self._net is None:
             net = ncnn.Net()
             net.opt.use_vulkan_compute = False  # 与 parity 脚本一致,CPU 保证确定性
+            # ProcessPool 已经按片段并行,每个 net 只用 1 线程避免 18 进程打满全部核
+            net.opt.num_threads = 1
             net.load_param(self.param_path)
             net.load_model(self.bin_path)
             self._net = net

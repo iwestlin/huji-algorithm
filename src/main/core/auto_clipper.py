@@ -1,5 +1,6 @@
 import abc
 import glob
+import hashlib
 import json
 import math
 import os
@@ -46,7 +47,6 @@ from src.main.utils.video_utils import (
     get_video_base_info,
     get_video_info,
     merge_videos_by_ffmpeg,
-    resize_video_ratio,
 )
 
 
@@ -296,9 +296,14 @@ class AutoClipper[C](abc.ABC):
 
         return all_predict_infos
 
+    def _cache_path_for(self, video_path: str) -> str:
+        """Cache by absolute path so same-stem files (e.g. two test.mp4) do not collide."""
+        digest = hashlib.sha256(os.path.abspath(video_path).encode("utf-8")).hexdigest()[:16]
+        stem = Path(video_path).stem
+        return path_utils.path_join(self.cache_path, f"{stem}-{digest}.json")
+
     def _load_cache(self, video_path: str) -> list[PredictedFrameInfo] | None:
-        video_name: str = Path(video_path).stem
-        cache_path: str = path_utils.path_join(self.cache_path, f"{video_name}.json")
+        cache_path: str = self._cache_path_for(video_path)
         if Path(cache_path).exists():
             with Path(cache_path).open() as f:
                 infos_json: Any = json.load(f)
@@ -312,8 +317,7 @@ class AutoClipper[C](abc.ABC):
         self, all_predict_infos: list[PredictedFrameInfo], video_path: str
     ) -> str:
         Path(self.cache_path).mkdir(parents=True, exist_ok=True)
-        video_name: str = Path(video_path).stem
-        cache_path: str = path_utils.path_join(self.cache_path, f"{video_name}.json")
+        cache_path: str = self._cache_path_for(video_path)
         with Path(cache_path).open("w") as f:
             json.dump(
                 [info.__dict__ for info in all_predict_infos],
@@ -336,22 +340,19 @@ class AutoClipper[C](abc.ABC):
     ) -> list[PredictedFrameInfo]:
         video_path = video_info.video_path
 
-        output_file = str(self.resized_output_dir / f"{Path(video_path).stem}.mp4")
-        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-
-        cache: list[PredictedFrameInfo] | None = self._load_cache(output_file)
-        cleanable_file_collection.add_file(output_file)
+        cache: list[PredictedFrameInfo] | None = self._load_cache(video_path)
         if cache is not None:
             return cache
 
-        with timer("调整视频大小为适用于预测的分辨率"):
-            resize_video_ratio(video_path, output_file, 640)
+        # Classify 预处理是短边缩放到 640 再中心裁剪。若先把整段视频压成宽 640
+        # (16:9 → 640x360),随后又把短边放大回 640,等于先糊再裁,检出大幅下降。
+        # 抽帧在原分辨率上进行,由 preprocess_image 做 Resize+CenterCrop。
         if progress_handler is not None:
             progress_handler.add_progress_proportion(
                 ActionProgressProportion.RESIZE_VIDEO, VideoProcessState.PROCESSING
             )
         return self.predict_video_action_points_internal_v2(
-            video_path=output_file,
+            video_path=video_path,
             model_name=model_name,
             segment_duration=120,
             class_mappings=class_mappings,
