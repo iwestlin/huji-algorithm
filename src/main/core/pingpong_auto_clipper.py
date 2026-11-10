@@ -214,6 +214,8 @@ class PingPongAutoClipper(AutoClipper[PingPongAutoClipConfig]):
                     start_time=start_seconds,
                     duration=duration,
                     output_file=all_ball_output_path,
+                    align_to_keyframe=self.merge_without_reencode,
+                    min_start_time=last_end_seconds,
                 )
                 cleanable_file_collection.add_file(all_ball_output_path)
 

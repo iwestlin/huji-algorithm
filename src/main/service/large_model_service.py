@@ -41,8 +41,9 @@ def preprocess_image(
 class NcnnModelPredictor:
     """ncnn 分类推理(替代 ultralytics YOLO),行为镜像 app 侧 Dart 实现。"""
 
-    def __init__(self, param_path: str, debug: bool) -> None:
+    def __init__(self, param_path: str, debug: bool, confidence_threshold: float = 0.0) -> None:
         self.debug = debug
+        self.confidence_threshold = confidence_threshold
         self.param_path = param_path
         self.bin_path = str(Path(param_path).with_suffix(".bin"))
         metadata_path = Path(param_path).parent / "metadata.yaml"
@@ -74,11 +75,29 @@ class NcnnModelPredictor:
         _, out = ex.extract("out0")
         # ncnn 输出 Mat 为 1-D(类别数);reshape(-1) 同时兼容 (C,) 与 (1, C)
         logits = np.array(out).reshape(-1)
-        top1 = self.names[int(np.argmax(logits))]
+        # 模型导出时最后一层已带 Softmax;若发现不是概率分布则补做一次
+        if float(logits.min()) >= -1e-6 and abs(float(logits.sum()) - 1.0) < 1e-3:
+            probs = logits
+        else:
+            exp = np.exp(logits - logits.max())
+            probs = exp / exp.sum()
+        top1_index = int(np.argmax(probs))
+        top1 = self.names[top1_index]
         if self.debug:
-            LOG.info(f"ncnn predict {img_path}: top1={top1} logits={np.round(logits, 4).tolist()}")
+            LOG.info(
+                f"ncnn predict {img_path}: top1={top1}"
+                f" prob={probs[top1_index]:.4f} logits={np.round(logits, 4).tolist()}"
+            )
         if top1 in classes_mapping:
-            return classes_mapping[top1]
+            action = classes_mapping[top1]
+            # 低置信度的 play_ball 多为死球/等待画面,置为 UNKNOWN 以结束回合,
+            # 避免死球后仍被判定为比赛而保留过长片段。
+            if (
+                action == ActionType.PLAY_BALL
+                and float(probs[top1_index]) < self.confidence_threshold
+            ):
+                return ActionType.UNKNOWN
+            return action
         raise ValueError(f"Unknown action type: {top1}")
 
 
@@ -86,10 +105,11 @@ class LargeModelService:
     def __init__(self, large_model_service_config: LargeModelServiceConfig) -> None:
         self.models: dict[str, ModelConfig] = large_model_service_config.models
         self.debug = large_model_service_config.debug
+        self.confidence_threshold = large_model_service_config.confidence_threshold
 
     def get_predictor(self, model_name: str) -> NcnnModelPredictor:
         model_path = self.get_model_path(model_name)
-        return NcnnModelPredictor(model_path, self.debug)
+        return NcnnModelPredictor(model_path, self.debug, self.confidence_threshold)
 
     def get_model_path(self, model_name: str) -> str:
         return self.models[model_name].predict_model_path

@@ -10,6 +10,7 @@ class ActionType(int, Enum):
     PICK_BALL = 2
     TRANSITION = 3
     PLAYBACK = 4
+    UNKNOWN = 5
 
     @staticmethod
     def from_str(value: str) -> "ActionType":

@@ -14,6 +14,7 @@ datasource:
 
 autoclip_service_config:
   common:
+    merge_without_reencode: True
     cache_path: "$PROJECT_ROOT/output/cache"
     output_dir: "$PROJECT_ROOT/output/clipped"
     debug_clip_frame_output_dir: "$PROJECT_ROOT/output/clip_snippet"

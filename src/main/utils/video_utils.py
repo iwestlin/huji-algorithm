@@ -1,5 +1,7 @@
+import bisect
 import json
 import math
+import os
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -10,7 +12,10 @@ from src.main.utils import path_utils
 
 
 ffmpeg_path: str = "ffmpeg"
+ffprobe_path: str = "ffprobe"
 log_level: str = "error"
+
+_keyframe_cache: dict[str, tuple[float, int, list[float]]] = {}
 
 
 def merge_videos_by_ffmpeg(
@@ -18,6 +23,7 @@ def merge_videos_by_ffmpeg(
     output_file: str,
     codec: str,
     bit_rate: str,
+    copy_video: bool = False,
 ) -> None:
     """
     使用 FFmpeg 合并多个视频文件，支持 GPU 加速
@@ -52,15 +58,24 @@ def merge_videos_by_ffmpeg(
             "0",
             "-i",
             temp_filelist,
-            "-preset",
-            "fast",
-            "-c:v",
-            get_acc_codec(codec),
-            "-b:v",
-            bit_rate,
-            output_file,
         ]
 
+        if copy_video:
+            # 片段本身就是无损 -c copy 裁出来的且编码参数一致,可直接拼接,避免二次编码
+            cmd.extend(["-c", "copy"])
+        else:
+            cmd.extend(
+                [
+                    "-preset",
+                    "fast",
+                    "-c:v",
+                    get_acc_codec(codec),
+                    "-b:v",
+                    bit_rate,
+                ]
+            )
+
+        cmd.append(output_file)
         _run_cmd(cmd)
 
 
@@ -272,17 +287,101 @@ def clip_video_by_frames(
     return clip_video_by_times(input_file, start_time, duration, output_file)
 
 
+def _get_video_keyframes(input_file: str) -> list[float]:
+    """获取视频所有关键帧时间点(按输入文件缓存,避免每个片段都扫一遍)。"""
+    abs_path = os.path.abspath(input_file)
+    try:
+        stat = os.stat(abs_path)
+    except OSError:
+        return []
+    cached = _keyframe_cache.get(abs_path)
+    if cached is not None and cached[0] == stat.st_mtime and cached[1] == stat.st_size:
+        return cached[2]
+
+    cmd: list[str] = [
+        ffprobe_path,
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-skip_frame",
+        "nokey",
+        "-show_entries",
+        "frame=pts_time",
+        "-of",
+        "csv=p=0",
+        abs_path,
+    ]
+    try:
+        result = _run_cmd(cmd)
+    except subprocess.CalledProcessError as e:
+        LOG.warning(f"读取关键帧失败,将按原时间裁剪: {e}")
+        return []
+
+    keyframes: list[float] = []
+    for line in result.splitlines():
+        try:
+            keyframes.append(float(line.strip().rstrip(",")))
+        except ValueError:
+            continue
+    keyframes.sort()
+    _keyframe_cache[abs_path] = (stat.st_mtime, stat.st_size, keyframes)
+    return keyframes
+
+
+def _get_keyframe_before(input_file: str, seconds: float) -> float | None:
+    keyframes = _get_video_keyframes(input_file)
+    if not keyframes:
+        return None
+    index = bisect.bisect_right(keyframes, seconds) - 1
+    return keyframes[index] if index >= 0 else None
+
+
+def _get_keyframe_after(input_file: str, seconds: float) -> float | None:
+    keyframes = _get_video_keyframes(input_file)
+    if not keyframes:
+        return None
+    index = bisect.bisect_left(keyframes, seconds)
+    return keyframes[index] if index < len(keyframes) else None
+
+
 def clip_video_by_times(
-    input_file: str, start_time: float, duration: float, output_file: str
+    input_file: str,
+    start_time: float,
+    duration: float,
+    output_file: str,
+    align_to_keyframe: bool = False,
+    min_start_time: float | None = None,
 ) -> None:
     """根据时间裁剪视频
 
-    参数:
-        input_file: 输入视频文件路径
-        start_time: 起始时间（秒）
-        duration: 持续时间（秒）
-        output_file: 输出视频文件路径
+    align_to_keyframe=True 时(仅用于 -c copy 拼接):起点必须落在关键帧上,
+    否则 ffmpeg 会保留“关键帧到起点”之间带负 PTS/discard 标记的帧。这些帧
+    被拼接时会被压到上一段末尾,造成接缝处画面冻结/闪烁。因此这里把起点前移到
+    最近的关键帧,并延长到原定终点。
+
+    min_start_time 用于避免与上一段重叠:若起点的关键帧早于上一段结束时间,
+    则改用上一段结束之后的第一个关键帧。
     """
+    end_time = start_time + duration
+    keyframe: float | None = None
+    if align_to_keyframe:
+        keyframe = _get_keyframe_before(input_file, start_time)
+        if (
+            keyframe is not None
+            and min_start_time is not None
+            and keyframe < min_start_time
+        ):
+            keyframe = _get_keyframe_after(input_file, min_start_time)
+            if keyframe is None or keyframe >= end_time:
+                keyframe = None
+    actual_start = keyframe if keyframe is not None else start_time
+    actual_duration = max(end_time - actual_start, 0.001)
+    if actual_start != start_time:
+        LOG.debug(
+            f"裁剪起点前移到关键帧: {start_time:.3f} -> {actual_start:.3f},"
+            f" 时长 {duration:.3f} -> {actual_duration:.3f}"
+        )
 
     # 构建 FFmpeg 命令
     cmd: list[str] = [
@@ -291,11 +390,11 @@ def clip_video_by_times(
         log_level,
         "-y",
         "-ss",
-        str(start_time),  # 先定位到开始时间
+        str(actual_start),  # 先定位到关键帧
         "-i",
         input_file,  # 然后读取输入文件
         "-t",
-        str(duration),  # 设置持续时间
+        str(actual_duration),  # 设置持续时间
         "-c",
         "copy",
         output_file,

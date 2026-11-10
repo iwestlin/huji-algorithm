@@ -207,6 +207,9 @@ class CommonAutoClipOptions(SecurityConfig):
         self.workers = self._get_value("workers", cpu_count)
         self.split_count = self._get_value("split_size", 1200)
         self.frame_interval: int = self._get_value("frame_interval", None)
+        self.merge_without_reencode: bool = bool(
+            self._get_value("merge_without_reencode", True)
+        )
 
         self.output_dir = path_utils.get_project_path(self._get_value("output_dir"))
         self.cache_path = path_utils.get_project_path(self._get_value("cache_path"))
@@ -293,6 +296,7 @@ class LargeModelServiceConfig(SecurityConfig):
         for model in models:
             self.models[model] = ModelConfig(ConfigContext(config=models[model]))
         self.debug = self._get_value("debug", False)
+        self.confidence_threshold: float = float(self._get_value("confidence_threshold", 0.5))
 
 
 class KafkaConfig(SecurityConfig):

@@ -75,6 +75,7 @@ class AutoClipper[C](abc.ABC):
         self.frame_interval = common_auto_clip_options.frame_interval
         self.workers = common_auto_clip_options.workers
         self.split_count = common_auto_clip_options.split_count
+        self.merge_without_reencode = common_auto_clip_options.merge_without_reencode
         self.large_model_service = large_model_service
         self.debug_clip_frame_output_dir = common_auto_clip_options.debug_clip_frame_output_dir
         self.clipped_output_dir = Path(common_auto_clip_options.output_dir) / "clipped"
@@ -453,6 +454,10 @@ class AutoClipper[C](abc.ABC):
                 great_ball_output_dir = path_utils.path_join(output_dir_str, "greats")
                 Path(all_ball_output_dir).mkdir(parents=True, exist_ok=True)
                 Path(great_ball_output_dir).mkdir(parents=True, exist_ok=True)
+                # 调试输出目录会被复用,先清掉上一次运行留下的片段,避免被 glob 合并进结果
+                for reusable_dir in (all_ball_output_dir, great_ball_output_dir):
+                    for stale_file in glob.glob(path_utils.path_join(reusable_dir, "*.mp4")):
+                        os.remove(stale_file)
                 video_list = self._clip_video(
                     cleanable_file_collection,
                     clip_config,
@@ -480,6 +485,7 @@ class AutoClipper[C](abc.ABC):
                     output_merged_video_path,
                     input_video_info.codec_name,
                     input_video_info.bit_rate,
+                    copy_video=self.merge_without_reencode,
                 )
 
             output_video_info: VideoBaseInfo = get_video_base_info(output_merged_video_path)
@@ -580,6 +586,8 @@ class AutoClipper[C](abc.ABC):
                     start_time=start_seconds,
                     duration=duration,
                     output_file=all_ball_output_path,
+                    align_to_keyframe=self.merge_without_reencode,
+                    min_start_time=last_end_seconds,
                 )
                 cleanable_file_collection.add_file(all_ball_output_path)
 

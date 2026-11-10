@@ -12,6 +12,7 @@ filesystem:
     endpoint: "cos.ap-guangzhou.myqcloud.com"
 
 large_model:
+  confidence_threshold: 0.9
   models:
     ping_pong_singles_profession:
       predict_model_path: "$PROJECT_RESOURCES/ncnn_models/ping_pong/profession/model.ncnn.param"
